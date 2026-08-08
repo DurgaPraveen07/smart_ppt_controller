@@ -1,0 +1,32 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Local duplicates / backup copies
+* (1)*
+* (1)
+app (1).py
+start (1).bat
+requirements (1).txt
+backend (1)/
+frontend (1)/
+static (1)/
+templates (1)/
+uploads (1)/
+
+# Local runtime directories & media
+venv/
+.venv/
+__pycache__/
+*.pyc
+uploads/
+static/slides/
+gesture_recognizer.task
+.agents/
+skills-lock.json
+

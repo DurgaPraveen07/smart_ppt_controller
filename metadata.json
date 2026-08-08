@@ -1,0 +1,8 @@
+{
+  "name": "Gesture PPT Controller",
+  "description": "Control your presentations using hand gestures and voice commands. Supports Thumbs Up (Start), Open Palm (Pause), Index Finger (Laser), and Swipes (Navigation).",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

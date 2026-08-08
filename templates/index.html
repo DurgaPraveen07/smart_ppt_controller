@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gesture PPT Controller</title>
+  <meta name="description"
+    content="Control PowerPoint and PDF presentations hands-free using AI hand gesture recognition and voice commands.">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #08090f;
+      --surface: #10121c;
+      --card: rgba(20, 23, 40, 0.9);
+      --border: rgba(99, 102, 241, 0.18);
+      --primary: #6366f1;
+      --primary-light: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --error: #ef4444;
+      --warn: #f59e0b;
+      --text: #f0f2ff;
+      --muted: #64748b;
+      --secondary: #94a3b8;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden
+    }
+
+    /* ── GRID LAYOUT ── */
+    #root {
+      display: grid;
+      grid-template-rows: 44px 1fr 64px;
+      height: 100vh;
+    }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      padding: 0 1.2rem;
+      gap: 0.8rem;
+      background: rgba(8, 9, 15, 0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: relative;
+      z-index: 10;
+    }
+
+    #topbar h1 {
+      font-size: .95rem;
+      font-weight: 700;
+      background: linear-gradient(120deg, #c7d2fe, #6366f1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      flex-shrink: 0;
+    }
+
+    #server-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+      flex-shrink: 0;
+      transition: background .4s;
+    }
+
+    #server-dot.ok {
+      background: var(--success);
+      animation: pulse-dot 2s ease-in-out infinite
+    }
+
+    #server-dot.err {
+      background: var(--error)
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, .5)
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(16, 185, 129, 0)
+      }
+    }
+
+    #server-label {
+      font-size: .75rem;
+      color: var(--secondary);
+      white-space: nowrap
+    }
+
+    .spacer {
+      flex: 1
+    }
+
+    #slide-counter {
+      font-size: .8rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      white-space: nowrap
+    }
+
+    /* ── MAIN AREA ── */
+    #main {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      overflow: hidden;
+      min-height: 0;       /* CRITICAL: allow grid children to shrink & scroll */
+    }
+
+    /* ── SLIDE VIEWER ── */
+    #slide-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      position: relative;
+      padding: 1rem;
+      cursor: default;
+      user-select: none;
+      min-height: 0;       /* allow proper flex sizing */
+      overflow: hidden;
+    }
+
+    #slide-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+      display: none;
+    }
+
+    #slide-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      width: 100%;
+      padding: 1.5rem;
+    }
+
+    /* ── CENTER UPLOAD DROP ZONE ── */
+    #center-drop {
+      width: 100%;
+      max-width: 620px;
+      border: 2.5px dashed rgba(99, 102, 241, .5);
+      border-radius: 20px;
+      padding: 3rem 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(99, 102, 241, .04);
+      transition: all .25s ease;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #center-drop:hover,
+    #center-drop.drag {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, .1);
+      box-shadow: 0 0 60px rgba(99, 102, 241, .15), inset 0 0 40px rgba(99, 102, 241, .05);
+      transform: scale(1.01);
+    }
+
+    #center-drop.done {
+      border-color: var(--success);
+      border-style: solid;
+      box-shadow: 0 0 40px rgba(16, 185, 129, .15)
+    }
+
+    #center-drop.err {
+      border-color: var(--error);
+      border-style: solid;
+    }
+
+    #center-drop input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    #c-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: float 4s ease-in-out infinite;
+      transition: transform .3s;
+    }
+
+    #center-drop:hover #c-icon,
+    #center-drop.drag #c-icon {
+      animation: none;
+      transform: scale(1.2) translateY(-8px)
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-12px)
+      }
+    }
+
+    #c-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: .5rem;
+      background: linear-gradient(120deg, #c7d2fe, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #c-sub {
+      font-size: .9rem;
+      color: var(--secondary);
+      margin-bottom: 1.2rem;
+      line-height: 1.5
+    }
+
+    .c-badges {
+      display: flex;
+      gap: .5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.4rem
+    }
+
+    .c-badge {
+      background: rgba(99, 102, 241, .14);
+      border: 1px solid rgba(99, 102, 241, .3);
+      color: #a5b4fc;
+      padding: .25rem .65rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+    }
+
+    #c-btn {
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      padding: .7rem 2rem;
+      border-radius: 50px;
+      font-size: .9rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all .2s;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, .4);
+      pointer-events: none;
+    }
+
+    #center-drop:hover #c-btn {
+      background: #4f46e5;
+      box-shadow: 0 6px 24px rgba(99, 102, 241, .5)
+    }
+
+    #c-status {
+      margin-top: .9rem;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Gesture flash overlay */
+    #gesture-flash {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, .75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 50px;
+      padding: .35rem 1rem;
+      font-size: .85rem;
+      font-weight: 600;
+      color: #c7d2fe;
+      opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;       /* CRITICAL: lets overflow-y:auto activate */
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) transparent;
+    }
+    #sidebar::-webkit-scrollbar { width: 4px }
+    #sidebar::-webkit-scrollbar-track { background: transparent }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px }
+
+    .panel {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+    }
+
+    .panel-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+
+    /* Upload zone */
+    #drop-zone {
+      border: 2px dashed rgba(99, 102, 241, .4);
+      border-radius: 12px;
+      padding: 1.4rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+      background: var(--primary-light);
+    }
+
+    #drop-zone:hover,
+    #drop-zone.drag {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, .22);
+    }
+
+    #drop-zone.done {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, .08)
+    }
+
+    #drop-zone.err {
+      border-color: var(--error);
+      background: rgba(239, 68, 68, .08)
+    }
+
+    #drop-zone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer
+    }
+
+    #drop-icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: .4rem;
+      transition: transform .25s
+    }
+
+    #drop-zone:hover #drop-icon,
+    #drop-zone.drag #drop-icon {
+      transform: scale(1.15) translateY(-3px)
+    }
+
+    #drop-h {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .2rem
+    }
+
+    #drop-p {
+      font-size: .72rem;
+      color: var(--muted)
+    }
+
+    .ft {
+      display: inline-block;
+      background: rgba(99, 102, 241, .15);
+      border: 1px solid rgba(99, 102, 241, .25);
+      color: #a5b4fc;
+      padding: .15rem .4rem;
+      border-radius: 4px;
+      font-size: .65rem;
+      font-weight: 700;
+      margin: .4rem .15rem 0
+    }
+
+    /* Upload status */
+    #up-status {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: .5rem;
+    }
+
+    .smsg {
+      font-size: .78rem;
+      font-weight: 600;
+      padding: .35rem .8rem;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .smsg.loading {
+      background: rgba(99, 102, 241, .12);
+      border: 1px solid rgba(99, 102, 241, .25);
+      color: #a5b4fc
+    }
+
+    .smsg.ok {
+      background: rgba(16, 185, 129, .1);
+      border: 1px solid rgba(16, 185, 129, .3);
+      color: #34d399
+    }
+
+    .smsg.err {
+      background: rgba(239, 68, 68, .1);
+      border: 1px solid rgba(239, 68, 68, .3);
+      color: #f87171
+    }
+
+    .spin {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(165, 180, 252, .3);
+      border-top-color: #a5b4fc;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* Camera feed */
+    #cam-box {
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 4/3;
+    }
+
+    #cam-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none
+    }
+
+    #cam-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    #cam-placeholder span {
+      font-size: 2rem;
+      opacity: .3
+    }
+
+    /* LIVE badge */
+    #live-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, .7);
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 50px;
+      padding: .2rem .6rem;
+      font-size: .65rem;
+      font-weight: 700;
+      color: var(--success);
+      display: none;
+      align-items: center;
+      gap: .35rem;
+    }
+
+    #live-badge.show {
+      display: flex
+    }
+
+    .ldot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse-dot 1.2s ease-in-out infinite
+    }
+
+    /* Gesture reference */
+    .gref-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem
+    }
+
+    .gref-card {
+      background: rgba(0, 0, 0, .25);
+      border: 1px solid rgba(255, 255, 255, .04);
+      border-radius: 8px;
+      padding: .6rem .7rem;
+    }
+
+    .gref-card .em {
+      font-size: 1.2rem;
+      margin-bottom: .2rem
+    }
+
+    .gref-card .gn {
+      font-size: .68rem;
+      font-weight: 700;
+      color: #a5b4fc
+    }
+
+    .gref-card .ga {
+      font-size: .65rem;
+      color: var(--secondary);
+      margin-top: .1rem
+    }
+
+    /* ── BOTTOM BAR ── */
+    #bottombar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      padding: 0 1rem;
+      background: rgba(8, 9, 15, .95);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(255, 255, 255, .12);
+      color: var(--text);
+      padding: .5rem 1.2rem;
+      font-size: .85rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn:hover {
+      background: rgba(99, 102, 241, .15);
+      border-color: var(--primary);
+      transform: translateY(-1px)
+    }
+
+    .btn.active {
+      background: rgba(99, 102, 241, .25);
+      border-color: var(--primary);
+      color: #c7d2fe;
+      box-shadow: 0 0 16px rgba(99, 102, 241, .35)
+    }
+
+    .btn:disabled {
+      opacity: .35;
+      cursor: not-allowed;
+      transform: none
+    }
+
+    .btn.nav {
+      padding: .5rem .9rem;
+      font-size: 1rem
+    }
+
+    #slide-dots {
+      display: flex;
+      gap: .4rem;
+      align-items: center
+    }
+
+    /* slide thumbnail strip */
+    #thumb-strip {
+      display: flex;
+      gap: .5rem;
+      overflow-x: auto;
+      padding-bottom: .3rem;
+    }
+
+    #thumb-strip::-webkit-scrollbar {
+      height: 4px
+    }
+
+    #thumb-strip::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, .05);
+      border-radius: 2px
+    }
+
+    #thumb-strip::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 2px
+    }
+
+    .thumb {
+      flex-shrink: 0;
+      width: 72px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .15s, transform .15s;
+      opacity: .6;
+    }
+
+    .thumb:hover {
+      opacity: 1
+    }
+
+    .thumb.active {
+      border-color: var(--primary);
+      opacity: 1;
+      transform: scale(1.05)
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+
+    <!-- ── TOP BAR ── -->
+    <div id="topbar">
+      <div id="server-dot"></div>
+      <h1>✦ Gesture PPT</h1>
+      <span id="server-label">Connecting…</span>
+      <div class="spacer"></div>
+      <span id="slide-counter" style="display:none">Slide — / —</span>
+    </div>
+
+    <!-- ── MAIN ── -->
+    <div id="main">
+
+      <!-- Slide Viewer -->
+      <div id="slide-area">
+        <div id="gesture-flash"></div>
+        <img id="slide-canvas" alt="Current slide">
+
+        <!-- BIG CENTER UPLOAD when no presentation loaded -->
+        <div id="slide-empty">
+          <div id="center-drop" ondragenter="cDragEnter(event)" ondragover="cDragOver(event)"
+            ondragleave="cDragLeave(event)" ondrop="cDrop(event)" onclick="document.getElementById('c-file').click()">
+            <input type="file" id="c-file" accept=".ppt,.pptx,.pdf" onchange="cFileChosen(event)">
+            <div id="c-icon">📊</div>
+            <div id="c-title">Drop your Presentation Here</div>
+            <div id="c-sub">Drag &amp; drop a file onto this area, or click the button below.<br>Your slides will open
+              right here in the browser.</div>
+            <div class="c-badges">
+              <span class="c-badge">.pptx</span>
+              <span class="c-badge">.ppt</span>
+              <span class="c-badge">.pdf</span>
+            </div>
+            <div id="c-btn">📂 Browse &amp; Open Presentation</div>
+            <div id="c-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div id="sidebar">
+
+        <!-- Upload -->
+        <div class="panel">
+          <div class="panel-title">📁 Presentation</div>
+          <div id="drop-zone" ondragenter="dEnter(event)" ondragover="dOver(event)" ondragleave="dLeave(event)"
+            ondrop="dDrop(event)" onclick="document.getElementById('file-in').click()">
+            <input type="file" id="file-in" accept=".ppt,.pptx,.pdf" onchange="fileChosen(event)">
+            <span id="drop-icon">📂</span>
+            <div id="drop-h">Drop or click to upload</div>
+            <div id="drop-p">PPT, PPTX, PDF</div>
+            <div><span class="ft">.pptx</span><span class="ft">.ppt</span><span class="ft">.pdf</span></div>
+          </div>
+          <div id="up-status"></div>
+        </div>
+
+        <!-- Thumbnail strip -->
+        <div class="panel" id="thumb-panel" style="display:none">
+          <div class="panel-title">🖼 Slides</div>
+          <div id="thumb-strip"></div>
+        </div>
+
+        <!-- Camera -->
+        <div class="panel">
+          <div class="panel-title">📷 Camera Feed</div>
+          <div id="cam-box">
+            <div id="cam-placeholder"><span>📷</span>Camera Off</div>
+            <img id="cam-feed" alt="Camera">
+            <div id="live-badge"><span class="ldot"></span>LIVE</div>
+          </div>
+          <button class="btn" id="cam-btn" style="width:100%;margin-top:.6rem;justify-content:center"
+            onclick="toggleCamera()" disabled>
+            📷 <span id="cam-txt">Turn On Camera</span>
+          </button>
+          <button class="btn" id="mic-btn" style="width:100%;margin-top:.4rem;justify-content:center"
+            onclick="toggleMic()" disabled>
+            🎤 <span id="mic-txt">Turn On Mic</span>
+          </button>
+        </div>
+
+        <!-- Gesture Reference -->
+        <div class="panel">
+          <div class="panel-title">🤖 Gestures</div>
+          <div class="gref-grid">
+            <div class="gref-card">
+              <div class="em">👍</div>
+              <div class="gn">Thumbs Up</div>
+              <div class="ga">First Slide</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">✋</div>
+              <div class="gn">Open Palm</div>
+              <div class="ga">Last Slide</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">👉</div>
+              <div class="gn">Swipe Right</div>
+              <div class="ga">Next →</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">👈</div>
+              <div class="gn">Swipe Left</div>
+              <div class="ga">← Previous</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">☝️</div>
+              <div class="gn">Index Finger</div>
+              <div class="ga">Next Slide</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">✌️</div>
+              <div class="gn">Peace Sign</div>
+              <div class="ga">Prev Slide</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">🗣️</div>
+              <div class="gn">Voice: "Next"</div>
+              <div class="ga">Next Slide</div>
+            </div>
+            <div class="gref-card">
+              <div class="em">🗣️</div>
+              <div class="gn">Voice: "Back"</div>
+              <div class="ga">Prev Slide</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /sidebar -->
+    </div><!-- /main -->
+
+    <!-- ── BOTTOM BAR ── -->
+    <div id="bottombar">
+      <button class="btn nav" id="prev-btn" onclick="goSlide(-1)" disabled title="Previous Slide">‹</button>
+      <div id="slide-dots"></div>
+      <button class="btn nav" id="next-btn" onclick="goSlide(1)" disabled title="Next Slide">›</button>
+    </div>
+
+  </div><!-- /root -->
+
+  <script>
+    /* ═══════════════════════════════════════════════
+       STATE
+    ══════════════════════════════════════════════ */
+    let serverOk = false;
+    let currentSlide = 0;
+    let totalSlides = 0;
+    let camActive = false;
+    let micActive = false;
+    let lastKnownSlide = -1;
+
+    /* ═══════════════════════════════════════════════
+       SERVER HEALTH POLLING
+    ══════════════════════════════════════════════ */
+    async function checkServer() {
+      const dot = document.getElementById('server-dot');
+      const label = document.getElementById('server-label');
+      try {
+        const r = await fetch('/status', { cache: 'no-store' });
+        const d = await r.json();
+        if (d.server === 'ok') {
+          serverOk = true;
+          dot.className = 'ok';
+          label.textContent = 'Server connected';
+          document.getElementById('cam-btn').disabled = false;
+          document.getElementById('mic-btn').disabled = false;
+        }
+      } catch (_) {
+        serverOk = false;
+        dot.className = 'err';
+        label.textContent = '✖ Server offline — run: python backend/app.py';
+        document.getElementById('cam-btn').disabled = true;
+        document.getElementById('mic-btn').disabled = true;
+      }
+    }
+    checkServer();
+    setInterval(checkServer, 5000);
+
+    /* ═══════════════════════════════════════════════
+       SLIDE STATE POLLING  (detects gesture changes)
+    ══════════════════════════════════════════════ */
+    async function pollSlideState() {
+      if (!serverOk) return;
+      try {
+        const r = await fetch('/slide/state', { cache: 'no-store' });
+        const d = await r.json();
+        if (d.loaded && d.current !== lastKnownSlide) {
+          lastKnownSlide = d.current;
+          currentSlide = d.current;
+          totalSlides = d.total;
+          showSlide(d.current);
+        }
+      } catch (_) { }
+    }
+    setInterval(pollSlideState, 350);
+
+    /* ═══════════════════════════════════════════════
+       SLIDE DISPLAY
+    ══════════════════════════════════════════════ */
+    function showSlide(n) {
+      const img = document.getElementById('slide-canvas');
+      const empty = document.getElementById('slide-empty');
+      const counter = document.getElementById('slide-counter');
+      const prev = document.getElementById('prev-btn');
+      const next = document.getElementById('next-btn');
+
+      img.src = `/slide/image/${n}?t=${Date.now()}`;
+      img.style.display = 'block';
+      empty.style.display = 'none';
+      counter.style.display = 'block';
+      counter.textContent = `Slide ${n + 1} / ${totalSlides}`;
+
+      prev.disabled = (n === 0);
+      next.disabled = (n === totalSlides - 1);
+
+      document.querySelectorAll('.thumb').forEach((t, i) => {
+        t.classList.toggle('active', i === n);
+        if (i === n) t.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      });
+    }
+
+    function flashGesture(text) {
+      const el = document.getElementById('gesture-flash');
+      el.textContent = text;
+      el.style.opacity = '1';
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+    }
+
+    async function goSlide(delta) {
+      if (!serverOk || totalSlides === 0) return;
+      const url = delta > 0 ? '/slide/next' : '/slide/prev';
+      const r = await fetch(url, { method: 'POST' });
+      const d = await r.json();
+      if (d.loaded) {
+        lastKnownSlide = d.current;
+        currentSlide = d.current;
+        showSlide(d.current);
+        flashGesture(delta > 0 ? '→ Next Slide' : '← Previous Slide');
+      }
+    }
+
+    async function gotoSlideN(n) {
+      const r = await fetch(`/slide/goto/${n}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.loaded) { lastKnownSlide = d.current; currentSlide = d.current; showSlide(d.current); }
+    }
+
+    function buildThumbs(total) {
+      const strip = document.getElementById('thumb-strip');
+      strip.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const img = document.createElement('img');
+        img.src = `/slide/image/${i}`;
+        img.className = 'thumb' + (i === 0 ? ' active' : '');
+        img.title = `Slide ${i + 1}`;
+        img.onclick = () => gotoSlideN(i);
+        strip.appendChild(img);
+      }
+      document.getElementById('thumb-panel').style.display = 'block';
+    }
+
+    /* ═══════════════════════════════════════════════
+       DRAG & DROP UPLOAD  (sidebar zone)
+    ══════════════════════════════════════════════ */
+    function dEnter(e) { e.preventDefault(); setDrop('drag'); }
+    function dOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+    function dLeave(e) {
+      if (!document.getElementById('drop-zone').contains(e.relatedTarget)) resetDrop();
+    }
+    function dDrop(e) {
+      e.preventDefault(); resetDrop();
+      const f = e.dataTransfer.files[0]; if (f) upload(f);
+    }
+    function fileChosen(e) {
+      const f = e.target.files[0]; if (f) upload(f); e.target.value = '';
+    }
+    function setDrop(cls) {
+      const z = document.getElementById('drop-zone');
+      z.className = cls;
+      if (cls === 'drag') { document.getElementById('drop-icon').textContent = '📥'; document.getElementById('drop-h').textContent = 'Release to upload!'; }
+    }
+    function resetDrop() {
+      const z = document.getElementById('drop-zone');
+      z.className = '';
+      document.getElementById('drop-icon').textContent = '📂';
+      document.getElementById('drop-h').textContent = 'Drop or click to upload';
+      document.getElementById('drop-p').textContent = 'PPT, PPTX, PDF';
+    }
+
+    async function upload(file) {
+      const exts = ['.ppt', '.pptx', '.pdf'];
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      if (!exts.includes(ext)) { upStatus('❌ Unsupported type', 'err'); return; }
+
+      setDrop('');
+      document.getElementById('drop-icon').textContent = '⏳';
+      document.getElementById('drop-h').textContent = file.name;
+      document.getElementById('drop-p').textContent = 'Converting slides…';
+      upStatus('<span class="spin"></span> Processing — this may take a moment…', 'loading', true);
+
+      const fd = new FormData(); fd.append('file', file);
+      try {
+        const r = await fetch('/upload_presentation', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (r.ok) {
+          totalSlides = d.total; currentSlide = 0; lastKnownSlide = 0;
+          setDrop('done');
+          document.getElementById('drop-icon').textContent = '✅';
+          document.getElementById('drop-h').textContent = d.title;
+          document.getElementById('drop-p').textContent = `${d.total} slides loaded`;
+          upStatus(`✅ ${d.total} slides ready`, 'ok');
+          document.getElementById('prev-btn').disabled = false;
+          document.getElementById('next-btn').disabled = false;
+          showSlide(0);
+          buildThumbs(d.total);
+        } else {
+          setDrop('err');
+          document.getElementById('drop-icon').textContent = '❌';
+          document.getElementById('drop-h').textContent = 'Conversion failed';
+          document.getElementById('drop-p').textContent = d.error || 'Unknown error';
+          upStatus('❌ ' + (d.error || 'Failed'), 'err');
+        }
+      } catch (_) {
+        setDrop('err');
+        upStatus('❌ Server unreachable. Run: python backend/app.py', 'err');
+      }
+      setTimeout(resetDrop, 5000);
+    }
+
+    function upStatus(html, type, raw = false) {
+      document.getElementById('up-status').innerHTML = `<div class="smsg ${type}">${html}</div>`;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CAMERA
+    ══════════════════════════════════════════════ */
+    async function toggleCamera() {
+      if (!serverOk) return;
+      const r = await fetch('/toggle_camera', { method: 'POST' });
+      const d = await r.json();
+      const feed = document.getElementById('cam-feed');
+      const ph = document.getElementById('cam-placeholder');
+      const badge = document.getElementById('live-badge');
+      const btn = document.getElementById('cam-btn');
+      const txt = document.getElementById('cam-txt');
+      if (d.status === 'Camera Started') {
+        camActive = true;
+        feed.src = '/video_feed?' + Date.now();
+        feed.style.display = 'block'; ph.style.display = 'none';
+        badge.classList.add('show');
+        btn.classList.add('active'); txt.textContent = 'Turn Off Camera';
+      } else {
+        camActive = false;
+        feed.style.display = 'none'; feed.src = ''; ph.style.display = 'flex';
+        badge.classList.remove('show');
+        btn.classList.remove('active'); txt.textContent = 'Turn On Camera';
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       MICROPHONE
+    ══════════════════════════════════════════════ */
+    async function toggleMic() {
+      if (!serverOk) return;
+      const r = await fetch('/toggle_mic', { method: 'POST' });
+      const d = await r.json();
+      const btn = document.getElementById('mic-btn');
+      const txt = document.getElementById('mic-txt');
+      if (d.status === 'Mic Active') {
+        micActive = true;
+        btn.classList.add('active'); txt.textContent = 'Turn Off Mic';
+      } else {
+        micActive = false;
+        btn.classList.remove('active'); txt.textContent = 'Turn On Mic';
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       CENTER DRAG & DROP  (main area upload zone)
+    ══════════════════════════════════════════════ */
+    function cDragEnter(e) {
+      e.preventDefault();
+      document.getElementById('center-drop').classList.add('drag');
+      document.getElementById('c-icon').textContent = '📥';
+      document.getElementById('c-title').textContent = 'Release to open!';
+    }
+    function cDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+    function cDragLeave(e) {
+      if (!document.getElementById('center-drop').contains(e.relatedTarget)) {
+        resetCenterDrop();
+      }
+    }
+    function cDrop(e) {
+      e.preventDefault();
+      resetCenterDrop();
+      const f = e.dataTransfer.files[0]; if (f) uploadCenter(f);
+    }
+    function cFileChosen(e) {
+      const f = e.target.files[0]; if (f) uploadCenter(f); e.target.value = '';
+    }
+    function resetCenterDrop() {
+      const cd = document.getElementById('center-drop');
+      cd.className = '';
+      document.getElementById('c-icon').textContent = '📊';
+      document.getElementById('c-title').textContent = 'Drop your Presentation Here';
+    }
+    function cStatus(html, type, raw = false) {
+      document.getElementById('c-status').innerHTML = `<div class="smsg ${type}">${html}</div>`;
+    }
+
+    async function uploadCenter(file) {
+      const exts = ['.ppt', '.pptx', '.pdf'];
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      const cd = document.getElementById('center-drop');
+
+      if (!exts.includes(ext)) {
+        cd.classList.add('err');
+        cStatus('❌ Unsupported type. Use .ppt, .pptx or .pdf', 'err');
+        setTimeout(resetCenterDrop, 3000); return;
+      }
+      if (!serverOk) {
+        cd.classList.add('err');
+        cStatus('❌ Server offline — run: python backend/app.py', 'err');
+        setTimeout(resetCenterDrop, 3000); return;
+      }
+
+      document.getElementById('c-icon').textContent = '⏳';
+      document.getElementById('c-title').textContent = 'Processing…';
+      document.getElementById('c-sub').textContent = file.name;
+      cStatus('<span class="spin"></span> Converting slides — please wait…', 'loading', true);
+
+      const fd = new FormData(); fd.append('file', file);
+      try {
+        const r = await fetch('/upload_presentation', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (r.ok) {
+          totalSlides = d.total; currentSlide = 0; lastKnownSlide = 0;
+          cd.classList.add('done');
+          document.getElementById('c-icon').textContent = '✅';
+          document.getElementById('c-title').textContent = `${d.total} Slides Ready!`;
+          document.getElementById('c-sub').textContent = d.title;
+          cStatus(`✅ Loaded ${d.total} slides`, 'ok');
+          document.getElementById('prev-btn').disabled = false;
+          document.getElementById('next-btn').disabled = false;
+          // Sync sidebar
+          document.getElementById('drop-icon').textContent = '✅';
+          document.getElementById('drop-h').textContent = d.title;
+          document.getElementById('drop-p').textContent = `${d.total} slides loaded`;
+          upStatus(`✅ ${d.total} slides ready`, 'ok');
+          setTimeout(() => {
+            showSlide(0);
+            buildThumbs(d.total);
+          }, 900);
+        } else {
+          cd.classList.add('err');
+          document.getElementById('c-icon').textContent = '❌';
+          document.getElementById('c-title').textContent = 'Conversion Failed';
+          cStatus('❌ ' + (d.error || 'Unknown error'), 'err');
+          setTimeout(resetCenterDrop, 4000);
+        }
+      } catch (_) {
+        cd.classList.add('err');
+        document.getElementById('c-icon').textContent = '❌';
+        cStatus('❌ Cannot reach server — run: python backend/app.py', 'err');
+        setTimeout(resetCenterDrop, 4000);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       KEYBOARD SHORTCUTS
+    ══════════════════════════════════════════════ */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') goSlide(1);
+      if (e.key === 'ArrowLeft'  || e.key === 'PageUp')  goSlide(-1);
+    });
+
+    /* ═══════════════════════════════════════════════
+       MOUSE WHEEL — scroll on slide area to navigate
+    ══════════════════════════════════════════════ */
+    let _wheelLock = false;
+    document.getElementById('slide-area').addEventListener('wheel', e => {
+      e.preventDefault();           // stop browser scroll
+      if (_wheelLock || totalSlides === 0) return;
+      _wheelLock = true;
+      setTimeout(() => { _wheelLock = false; }, 400);  // debounce 400 ms
+      if (e.deltaY > 0) goSlide(1);   // scroll down → next slide
+      else              goSlide(-1);  // scroll up  → prev slide
+    }, { passive: false });
+
+    /* ═══════════════════════════════════════════════
+       TOUCH SWIPE — swipe left/right on mobile/tablet
+    ══════════════════════════════════════════════ */
+    let _touchStartX = 0;
+    document.getElementById('slide-area').addEventListener('touchstart', e => {
+      _touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    document.getElementById('slide-area').addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - _touchStartX;
+      if (Math.abs(dx) > 60) goSlide(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  </script>
+</body>
+
+</html>
