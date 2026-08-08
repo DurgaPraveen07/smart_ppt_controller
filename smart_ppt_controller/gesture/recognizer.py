@@ -3,17 +3,35 @@ import time
 import numpy as np
 import cv2
 
-# Locate MediaPipe .task model reliably across installs
+# Robust multi-candidate locator for MediaPipe .task model across environments
 def _get_model_path():
+    candidates = []
+
+    # 1. Package resources (importlib.resources)
     try:
         from importlib.resources import files
-        model_path = str(files("smart_ppt_controller.models").joinpath("gesture_recognizer.task"))
-        if os.path.exists(model_path):
-            return model_path
+        p1 = str(files("smart_ppt_controller.models").joinpath("gesture_recognizer.task"))
+        candidates.append(p1)
     except Exception:
         pass
+
+    # 2. Relative to this module file inside smart_ppt_controller/models/
     mod_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(os.path.dirname(mod_dir), "models", "gesture_recognizer.task")
+    candidates.append(os.path.join(os.path.dirname(mod_dir), "models", "gesture_recognizer.task"))
+
+    # 3. Relative to root directory
+    candidates.append(os.path.join(os.path.dirname(os.path.dirname(mod_dir)), "gesture_recognizer.task"))
+
+    # 4. Current working directory
+    candidates.append(os.path.join(os.getcwd(), "gesture_recognizer.task"))
+
+    for c in candidates:
+        if c and os.path.exists(c):
+            return os.path.abspath(c)
+
+    # Default fallback
+    return os.path.abspath(candidates[1]) if len(candidates) > 1 else "gesture_recognizer.task"
+
 
 _MODEL_PATH = _get_model_path()
 _mp_gesture = None
@@ -34,7 +52,7 @@ try:
         )
         _mp_gesture = _mpv.GestureRecognizer.create_from_options(_gr_opts)
         MP_OK = True
-        print('[CV] MediaPipe GestureRecognizer (VIDEO mode) loaded -- accurate tracking active.')
+        print(f'[CV] MediaPipe GestureRecognizer (VIDEO mode) loaded from {_MODEL_PATH} -- accurate tracking active.')
     else:
         print(f'[CV] gesture_recognizer.task not found at {_MODEL_PATH} -- using skin-colour fallback.')
 except Exception as _e:
@@ -92,7 +110,7 @@ def _draw_hand_landmarks_pro(frame, hand_landmarks):
 
 
 def detect_gesture_mp(frame):
-    """MediaPipe GestureRecognizer in VIDEO mode."""
+    """MediaPipe GestureRecognizer in VIDEO mode (real-time, smooth tracking)."""
     global _prev_wrist_x, _last_action
 
     try:
