@@ -201,6 +201,9 @@ def start_app(host="0.0.0.0", port=5000, debug=False):
     print('='*55 + '\n')
     app.run(debug=debug, host=host, port=port, threaded=True)
 
+main = start_app
+
 
 if __name__ == '__main__':
     start_app()
+

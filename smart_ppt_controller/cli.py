@@ -1,9 +1,10 @@
+import sys
 import argparse
 from smart_ppt_controller import __version__
-from smart_ppt_controller.app import start_app
+from .app import main as start_app, main
 
 
-def main():
+def cli_main():
     parser = argparse.ArgumentParser(
         prog="smart-ppt-controller",
         description="Smart PPT Controller - Control presentations with hand gestures and voice commands"
@@ -31,8 +32,14 @@ def main():
     )
 
     args = parser.parse_args()
-    start_app(host=args.host, port=args.port, debug=args.debug)
+    return start_app(host=args.host, port=args.port, debug=args.debug)
+
+
+def main():
+    if len(sys.argv) > 1:
+        return cli_main()
+    return start_app()
 
 
 if __name__ == "__main__":
-    main()
+    cli_main()
