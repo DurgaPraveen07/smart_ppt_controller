@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "Durga Praveen"}
+    {name = "Durga Praveen Chennuboyina"}
 ]
 dependencies = [
     "flask>=2.3.0",
