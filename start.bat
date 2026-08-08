@@ -1,9 +1,9 @@
 @echo off
-title Gesture PPT Controller
+title Smart PPT Controller
 color 0B
 echo.
 echo  =====================================================
-echo   GESTURE PPT CONTROLLER
+echo   SMART PPT CONTROLLER
 echo  =====================================================
 echo.
 
@@ -25,5 +25,5 @@ echo.
 
 start "" "http://localhost:5000"
 
-python app.py
+python -m smart_ppt_controller
 pause

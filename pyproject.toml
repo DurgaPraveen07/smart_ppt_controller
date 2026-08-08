@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-ppt-controller"
+version = "1.0.0"
+description = "A computer-vision and voice-controlled PowerPoint presentation controller"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Durga Praveen"}
+]
+dependencies = [
+    "flask>=2.3.0",
+    "werkzeug>=2.3.0",
+    "numpy>=1.24.0",
+    "opencv-python>=4.8.0",
+    "mediapipe>=0.10.0",
+    "pymupdf>=1.23.0",
+    "python-pptx>=0.6.21",
+    "SpeechRecognition>=3.10.0",
+    "sounddevice>=0.4.6",
+    "scipy>=1.10.0",
+    "pywin32>=306; sys_platform == 'win32'",
+]
+
+[project.scripts]
+smart-ppt-controller = "smart_ppt_controller.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+smart_ppt_controller = [
+    "models/*",
+    "web/templates/*",
+    "web/static/*",
+    "assets/*"
+]

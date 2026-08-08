@@ -24,9 +24,13 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
 uploads/
 static/slides/
 gesture_recognizer.task
 .agents/
 skills-lock.json
+
 

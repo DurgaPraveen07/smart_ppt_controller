@@ -1,15 +1,15 @@
 <div align="center">
-  <img src="assets/banner.png" alt="Gesture PPT Controller Banner" width="100%" max-width="900px" style="border-radius: 10px; margin-bottom: 20px;">
+  <img src="smart_ppt_controller/assets/banner.png" alt="Smart PPT Controller Banner" width="100%" max-width="900px" style="border-radius: 10px; margin-bottom: 20px;">
 
-  # Gesture PPT Controller
+  # Smart PPT Controller
 
-  **An AI-Powered Touchless Presentation Controller using Hand Gestures & Voice Recognition**
+  **A computer-vision and voice-controlled PowerPoint presentation controller.**
 
   [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
-  [![Flask](https://img.shields.io/badge/Framework-Flask-green.svg)](https://flask.palletsprojects.com/)
+  [![PyPI Package](https://img.shields.io/badge/Package-smart--ppt--controller-green.svg)](#installation)
   [![MediaPipe](https://img.shields.io/badge/AI-MediaPipe-orange.svg)](https://mediapipe.dev/)
   [![OpenCV](https://img.shields.io/badge/CV-OpenCV-red.svg)](https://opencv.org/)
-  [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](#license)
+  [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 
 </div>
 
@@ -17,32 +17,53 @@
 
 ## 📌 Overview
 
-**Gesture PPT Controller** is a modern, touchless presentation control assistant designed to make slide navigation effortless and engaging. Using computer vision powered by **MediaPipe** and **OpenCV**, alongside **voice command recognition**, presenters can navigate slides, activate laser pointer tracking, annotate slides, and control playback completely hands-free without relying on clickers or physical hardware.
+**Smart PPT Controller** is a modern, touchless presentation control system. It allows presenters to navigate slides, trigger laser pointer modes, and control presentations using **real-time hand gestures** via webcam and **voice commands** via microphone without touching a keyboard, mouse, or clicker.
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-- 🖐️ **Real-Time Hand Gesture Control**
-  - High-precision 21-landmark tracking using **MediaPipe GestureRecognizer** (VIDEO mode).
-  - Smooth tracking for slide navigation, laser pointer, and annotation modes.
-  - Automated skin-color contour fallback for lightweight operation.
+- 🖐️ **Real-Time Hand Gesture Control** (MediaPipe 21-landmark Video Mode + skin contour fallback).
+- 🗣️ **Voice Command Recognition** (`"Next"`, `"Back"`, `"Start"`, `"End"`).
+- 📄 **PDF & PPTX Presentation Support** (Native PowerPoint COM automation & PyMuPDF rendering).
+- 💻 **Interactive Web HUD Dashboard** (Flask live video stream & slide preview).
+- 📦 **CLI & Executable Python Package**: Runnable globally via `smart-ppt-controller` from any directory.
 
-- 🗣️ **Voice Command Recognition**
-  - Integrated speech recognition for voice commands (`"Next"`, `"Previous"`, `"Start"`, `"Clear"`, etc.).
-  - Cross-platform audio backend compatibility (`sounddevice`, `SpeechRecognition`).
+---
 
-- 📄 **PDF & PPTX Presentation Support**
-  - Instant conversion of uploaded **PDF** documents via PyMuPDF (`fitz`).
-  - Native **PPTX** slide rendering using Microsoft PowerPoint COM automation (`win32com.client`).
+## 💻 System Requirements
 
-- 💻 **Interactive Web HUD & Live Dashboard**
-  - Web-based interface built with Flask and responsive HTML5/CSS3/JS.
-  - Real-time video preview with landmark visualization.
-  - Slide thumbnail strip, slide counter, and interactive presentation status.
+- **Operating System**: Windows 10/11 (Recommended for Microsoft PowerPoint COM automation).
+- **Python**: Python 3.9 – 3.11.
+- **Hardware**: Webcam and Microphone.
 
-- ⚡ **One-Click Launch Script**
-  - Convenient `start.bat` script for instant background process management, server initialization, and browser launching.
+---
+
+## 🚀 Installation
+
+Install directly from GitHub via `pip`:
+
+```bash
+pip install git+https://github.com/DurgaPraveen07/smart_ppt_controller.git
+```
+
+---
+
+## 🏃 Usage
+
+Once installed, you can launch the application from **ANY** working directory:
+
+### Option 1: Direct CLI Command
+```bash
+smart-ppt-controller
+```
+
+### Option 2: Python Module Execution
+```bash
+python -m smart_ppt_controller
+```
+
+Open your browser and navigate to: **`http://localhost:5000`**
 
 ---
 
@@ -63,89 +84,64 @@
 
 | Voice Command | Action |
 | :--- | :--- |
-| `"Next"` / `"Next Slide"` | Advance to next slide |
-| `"Previous"` / `"Back"` | Go to previous slide |
-| `"First"` / `"Start"` | Jump to beginning slide |
-| `"Last"` / `"End"` | Jump to final slide |
-| `"Clear"` | Clear active slide drawing annotations |
+| `"Next"` / `"Forward"` / `"Right"` | Advance to next slide |
+| `"Back"` / `"Previous"` / `"Left"` | Go to previous slide |
+| `"Start"` / `"First"` / `"Beginning"` | Jump to beginning slide |
+| `"End"` / `"Last"` | Jump to final slide |
 
 ---
 
-## 📁 Project Structure
+## 📁 Package Architecture
 
 ```text
-gesture-ppt-controller/
-├── assets/
-│   └── banner.png             # Project banner graphic
-├── static/
-│   └── slides/                # Rendered slide image cache (.jpg)
-├── templates/
-│   └── index.html             # Main Web Dashboard UI template
-├── uploads/                   # Uploaded PDF / PPTX presentation files
-├── app.py                     # Main Flask web app & Computer Vision engine
-├── gesture_recognizer.task    # MediaPipe Gesture Recognizer ML Model
-├── requirements.txt           # Python dependencies
-├── start.bat                  # One-click startup script for Windows
-└── README.md                  # Project documentation
+smart_ppt_controller/
+├── pyproject.toml              # Setuptools package metadata & entry points
+├── requirements.txt            # Runtime dependencies
+├── README.md                   # Documentation
+├── LICENSE                     # MIT License
+├── start.bat                   # Windows batch starter
+│
+└── smart_ppt_controller/
+    ├── __init__.py             # Package version definition
+    ├── __main__.py             # Module execution entrypoint
+    ├── cli.py                  # CLI argument parser & runner
+    ├── app.py                  # Flask server & web endpoints
+    ├── gesture/
+    │   └── recognizer.py       # MediaPipe gesture detection
+    ├── voice/
+    │   └── commands.py         # Voice recognition thread
+    ├── ppt/
+    │   └── controller.py       # PDF/PPTX conversion & state logic
+    ├── web/
+    │   ├── templates/index.html
+    │   └── static/
+    ├── assets/
+    │   └── banner.png
+    └── models/
+        └── gesture_recognizer.task # MediaPipe model asset
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Development Setup
 
-### Prerequisites
+To modify or contribute locally:
 
-- **Python 3.9 – 3.11** installed on your system.
-- Webcam and microphone connected.
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/DurgaPraveen07/smart_ppt_controller.git
-   cd smart_ppt_controller
-   ```
-
-2. **Create and activate a virtual environment (recommended):**
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### 🏃 Running the Application
-
-- **Option A: Quick Start (Windows)**
-  Double-click `start.bat` or run:
-  ```cmd
-  start.bat
-  ```
-
-- **Option B: Manual Start**
-  Run the Flask server directly:
-  ```bash
-  python app.py
-  ```
-
-Open your browser and navigate to: **`http://localhost:5000`**
+```bash
+git clone https://github.com/DurgaPraveen07/smart_ppt_controller.git
+cd smart_ppt_controller
+pip install -e .
+```
 
 ---
 
-## 🛠️ Tech Stack
+## ❓ Troubleshooting
 
-- **Backend**: Python, Flask, PyMuPDF (`fitz`), SpeechRecognition, `sounddevice`, `win32com.client`
-- **Computer Vision**: OpenCV (`cv2`), MediaPipe (`mediapipe.tasks.python.vision`)
-- **Frontend**: HTML5, CSS3, JavaScript (Fetch API, HTML5 Canvas)
+1. **Camera Not Opening**: Ensure no other application (e.g. Zoom, Teams) is using your webcam.
+2. **PowerPoint COM Export Error**: Make sure Microsoft PowerPoint is installed on your Windows system when uploading `.pptx` files. Alternatively, upload `.pdf` presentations which use PyMuPDF.
 
 ---
 
 ## 📜 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
