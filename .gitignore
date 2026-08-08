@@ -23,14 +23,14 @@ uploads (1)/
 venv/
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 *.egg-info/
 build/
 dist/
+.pytest_cache/
 uploads/
 static/slides/
 gesture_recognizer.task
 .agents/
 skills-lock.json
-
-
